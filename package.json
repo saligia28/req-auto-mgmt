@@ -1,0 +1,43 @@
+{
+  "name": "req-auto-mgmt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "需求自动化管理系统",
+  "scripts": {
+    "dev": "concurrently -n desktop,tapd,ai,terminal -c blue,green,yellow,magenta \"pnpm dev:desktop\" \"pnpm dev:tapd\" \"pnpm dev:ai\" \"pnpm dev:terminal\"",
+    "dev:desktop": "pnpm --filter @req-auto-mgmt/desktop dev",
+    "dev:tapd": "pnpm --filter @req-auto-mgmt/tapd-service dev",
+    "dev:ai": "pnpm --filter @req-auto-mgmt/ai-service dev",
+    "dev:terminal": "pnpm --filter @req-auto-mgmt/terminal-service dev",
+    "dev:services": "concurrently -n tapd,ai,terminal -c green,yellow,magenta \"pnpm dev:tapd\" \"pnpm dev:ai\" \"pnpm dev:terminal\"",
+    "build": "pnpm build:services && pnpm --filter @req-auto-mgmt/desktop build",
+    "build:services": "pnpm --filter @req-auto-mgmt/ai-service build && pnpm --filter @req-auto-mgmt/terminal-service build",
+    "build:types": "pnpm --filter @req-auto-mgmt/shared-types build",
+    "prepare:services": "node scripts/prepare-services.js",
+    "dist": "pnpm build && pnpm prepare:services && pnpm --filter @req-auto-mgmt/desktop dist",
+    "dist:mac": "pnpm build && pnpm prepare:services && pnpm --filter @req-auto-mgmt/desktop dist:mac",
+    "dist:win": "pnpm build && pnpm prepare:services && pnpm --filter @req-auto-mgmt/desktop dist:win",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "typecheck": "pnpm --filter @req-auto-mgmt/desktop typecheck && pnpm --filter @req-auto-mgmt/tapd-service typecheck && pnpm --filter @req-auto-mgmt/ai-service typecheck && pnpm --filter @req-auto-mgmt/terminal-service typecheck",
+    "clean": "rimraf node_modules apps/*/node_modules packages/*/node_modules services/*/node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}

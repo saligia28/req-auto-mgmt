@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./renderer" },
+    { "path": "./main" }
+  ]
+}

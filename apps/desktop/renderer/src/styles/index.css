@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 基础样式 */
+:root {
+  /* Claude 主题变量（默认） */
+  --color-bg: #faf9f7;
+  --color-panel: #ffffff;
+  --color-border: #e5e5e5;
+  --color-primary: #d97706;
+  --color-secondary: #92400e;
+  --color-text-main: #1a1a1a;
+  --color-text-dim: #6b7280;
+}
+
+/* Notion 主题 */
+[data-theme='notion'] {
+  --color-bg: #ffffff;
+  --color-panel: #f7f6f3;
+  --color-border: #e5e5e3;
+  --color-primary: #2383e2;
+  --color-secondary: #1d6ec8;
+  --color-text-main: #37352f;
+  --color-text-dim: #9b9a97;
+}
+
+/* Hacker 主题 */
+[data-theme='hacker'] {
+  --color-bg: #050505;
+  --color-panel: #0a0a0a;
+  --color-border: #333333;
+  --color-primary: #00ff41;
+  --color-secondary: #008f11;
+  --color-text-main: #e0e0e0;
+  --color-text-dim: #888888;
+}
+
+/* 全局样式 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* macOS 标题栏拖拽区域 */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-dim);
+}
+
+/* Hacker 主题滚动条 */
+[data-theme='hacker'] ::-webkit-scrollbar-thumb {
+  background: #333;
+}
+
+[data-theme='hacker'] ::-webkit-scrollbar-thumb:hover {
+  background: #00ff41;
+}

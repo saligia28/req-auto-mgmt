@@ -1,0 +1,123 @@
+{
+  "name": "@req-auto-mgmt/desktop",
+  "version": "0.1.0",
+  "description": "需求自动化管理系统 - Electron桌面应用",
+  "author": "workflow",
+  "private": true,
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "pnpm build:main && pnpm build:preload && concurrently -k \"pnpm dev:renderer\" \"pnpm dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "wait-on http://localhost:3499 && cross-env NODE_ENV=development electron .",
+    "dev:watch": "concurrently \"tsc -p main/tsconfig.json --watch\" \"tsc -p preload/tsconfig.json --watch\"",
+    "build": "pnpm build:renderer && pnpm build:main && pnpm build:preload",
+    "build:main": "tsc -p main/tsconfig.json",
+    "build:preload": "tsc -p preload/tsconfig.json",
+    "build:renderer": "vite build",
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "typecheck": "tsc -p renderer/tsconfig.json --noEmit && tsc -p main/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@req-auto-mgmt/shared-types": "workspace:*",
+    "electron-store": "^8.1.0",
+    "monaco-editor": "^0.55.1",
+    "node-pty": "^1.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "uuid": "^11.0.3",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0",
+    "xterm-addon-web-links": "^0.9.0",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.2",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.3.2",
+    "vite": "^5.0.8",
+    "vite-plugin-monaco-editor": "^1.1.0",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.workflow.req-auto-mgmt",
+    "productName": "需求自动化管理",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "build",
+        "to": "build",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../../services/ai-service/dist",
+        "to": "services/ai-service",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../../services/ai-service/package.json",
+        "to": "services/ai-service/package.json"
+      },
+      {
+        "from": "../../services/ai-service/node_modules_prod",
+        "to": "services/ai-service/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    }
+  }
+}
