@@ -34,7 +34,7 @@ const defaultSettings: AppSettings = {
     provider: 'ollama',
     ollama: {
       baseUrl: 'http://localhost:11434',
-      model: 'qwen2.5:7b',
+      model: 'gpt-oss:20b',
     },
   },
   notification: {

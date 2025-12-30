@@ -16,7 +16,7 @@ const defaultConfig: AIConfig = {
   provider: (process.env.AI_PROVIDER as 'ollama' | 'deepseek') || 'ollama',
   ollama: {
     baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    model: process.env.OLLAMA_MODEL || 'qwen2.5:7b',
+    model: process.env.OLLAMA_MODEL || 'gpt-oss:20b',
     timeout: parseInt(process.env.OLLAMA_TIMEOUT || '120000'),
   },
   deepseek: {

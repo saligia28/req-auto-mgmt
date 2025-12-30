@@ -46,7 +46,10 @@ export interface AppSettings {
 }
 
 // .env 文件中支持的配置映射
-const ENV_MAPPINGS: Record<string, { path: string[]; type: 'string' | 'number' | 'boolean' | 'json' }> = {
+const ENV_MAPPINGS: Record<
+  string,
+  { path: string[]; type: 'string' | 'number' | 'boolean' | 'json' }
+> = {
   // TAPD 配置
   TAPD_API_BASE: { path: ['tapd', 'apiBase'], type: 'string' },
   TAPD_WORKSPACE_ID: { path: ['tapd', 'workspaceId'], type: 'string' },
@@ -86,7 +89,7 @@ const defaultSettings: AppSettings = {
     provider: 'ollama',
     ollama: {
       baseUrl: 'http://localhost:11434',
-      model: 'qwen2.5:7b',
+      model: 'gpt-oss:20b',
     },
   },
   notification: {
@@ -168,7 +171,12 @@ class SettingsManager {
       // 将 .env 值应用到设置
       for (const [key, mapping] of Object.entries(ENV_MAPPINGS)) {
         if (envValues[key] !== undefined && envValues[key] !== '') {
-          this.setNestedValue(this.settings as unknown as Record<string, unknown>, mapping.path, envValues[key], mapping.type);
+          this.setNestedValue(
+            this.settings as unknown as Record<string, unknown>,
+            mapping.path,
+            envValues[key],
+            mapping.type
+          );
         }
       }
 
@@ -197,8 +205,10 @@ class SettingsManager {
       let value = trimmed.slice(eqIndex + 1).trim();
 
       // 去除引号
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
         value = value.slice(1, -1);
       }
 
@@ -276,11 +286,24 @@ class SettingsManager {
 
       // 分组写入配置
       const groups: Record<string, string[]> = {
-        'TAPD 配置': ['TAPD_API_BASE', 'TAPD_WORKSPACE_ID', 'TAPD_TOKEN', 'TAPD_USERNAME', 'TAPD_PASSWORD'],
-        'AI 配置': ['AI_PROVIDER', 'OLLAMA_BASE_URL', 'OLLAMA_MODEL', 'DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL', 'DEEPSEEK_MODEL'],
+        'TAPD 配置': [
+          'TAPD_API_BASE',
+          'TAPD_WORKSPACE_ID',
+          'TAPD_TOKEN',
+          'TAPD_USERNAME',
+          'TAPD_PASSWORD',
+        ],
+        'AI 配置': [
+          'AI_PROVIDER',
+          'OLLAMA_BASE_URL',
+          'OLLAMA_MODEL',
+          'DEEPSEEK_API_KEY',
+          'DEEPSEEK_BASE_URL',
+          'DEEPSEEK_MODEL',
+        ],
         'Notion 配置': ['NOTION_TOKEN', 'NOTION_DATABASE_ID'],
-        '路径配置': ['REQUIREMENTS_DIR'],
-        '应用配置': ['APP_THEME'],
+        路径配置: ['REQUIREMENTS_DIR'],
+        应用配置: ['APP_THEME'],
       };
 
       for (const [groupName, keys] of Object.entries(groups)) {
@@ -291,7 +314,10 @@ class SettingsManager {
         for (const key of keys) {
           const mapping = ENV_MAPPINGS[key];
           if (mapping) {
-            const value = this.getNestedValue(this.settings as unknown as Record<string, unknown>, mapping.path);
+            const value = this.getNestedValue(
+              this.settings as unknown as Record<string, unknown>,
+              mapping.path
+            );
             const strValue = value !== undefined && value !== null ? String(value) : '';
             lines.push(`${key}=${strValue}`);
           }

@@ -42,7 +42,7 @@ export const SettingsPage: FC = () => {
     provider: settings.ai.provider || 'ollama',
     ollama: {
       baseUrl: settings.ai.ollama?.baseUrl || 'http://localhost:11434',
-      model: settings.ai.ollama?.model || 'qwen2.5:7b',
+      model: settings.ai.ollama?.model || 'gpt-oss:20b',
     },
     deepseek: {
       apiKey: settings.ai.deepseek?.apiKey || '',

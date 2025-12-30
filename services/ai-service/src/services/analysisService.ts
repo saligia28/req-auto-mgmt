@@ -17,12 +17,7 @@ import {
   isDeepSeekConfigured,
   getDeepSeekModels,
 } from './deepseekClient.js';
-import type {
-  AIConfig,
-  AnalyzeRequest,
-  AnalysisResult,
-  GenerateOptions,
-} from '../types/index.js';
+import type { AIConfig, AnalyzeRequest, AnalysisResult, GenerateOptions } from '../types/index.js';
 import { DEFAULT_ANALYSIS_PROMPT as defaultPrompt } from '../types/index.js';
 
 // 当前 AI 配置
@@ -30,7 +25,7 @@ let currentConfig: AIConfig = {
   provider: 'ollama',
   ollama: {
     baseUrl: 'http://localhost:11434',
-    model: 'qwen2.5:7b',
+    model: 'gpt-oss:20b',
   },
 };
 
@@ -116,9 +111,10 @@ export async function analyzeRequirement(request: AnalyzeRequest): Promise<Analy
   const { summary, testCases } = parseAIResponse(response);
 
   const config = getAIConfig();
-  const model = config.provider === 'deepseek'
-    ? config.deepseek?.model || 'deepseek-chat'
-    : config.ollama?.model || 'qwen2.5:7b';
+  const model =
+    config.provider === 'deepseek'
+      ? config.deepseek?.model || 'deepseek-chat'
+      : config.ollama?.model || 'gpt-oss:20b';
 
   return {
     summary,
@@ -132,7 +128,11 @@ export async function analyzeRequirement(request: AnalyzeRequest): Promise<Analy
 /**
  * 测试当前配置的 AI 连接
  */
-export async function testConnection(): Promise<{ success: boolean; message: string; latency?: number }> {
+export async function testConnection(): Promise<{
+  success: boolean;
+  message: string;
+  latency?: number;
+}> {
   if (currentConfig.provider === 'deepseek') {
     return testDeepSeekConnection();
   }
@@ -186,6 +186,6 @@ export async function checkStatus(): Promise<{
   return {
     provider: 'ollama',
     available,
-    model: config.ollama?.model || 'qwen2.5:7b',
+    model: config.ollama?.model || 'gpt-oss:20b',
   };
 }
