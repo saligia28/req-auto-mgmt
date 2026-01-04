@@ -13,6 +13,7 @@ export interface RequirementFile {
   path: string;
   title: string;
   storyId: string;
+  owners: string[];
   createdAt: string;
   modifiedAt: string;
   size: number;
@@ -232,13 +233,22 @@ class FileService {
         // Extract story ID from filename
         const storyId = filename.replace('.md', '');
 
-        // Read first line for title
+        // Read content for title and owners
         let title = storyId;
+        let owners: string[] = [];
         try {
           const content = fs.readFileSync(filePath, 'utf-8');
+
+          // Extract title from first line
           const firstLine = content.split('\n')[0];
           if (firstLine.startsWith('# ')) {
             title = firstLine.substring(2).trim();
+          }
+
+          // Extract owners from content (format: - **负责人**: xxx, xxx)
+          const ownerMatch = content.match(/- \*\*负责人\*\*:\s*(.+)/);
+          if (ownerMatch && ownerMatch[1]) {
+            owners = ownerMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
           }
         } catch {
           // Ignore read errors
@@ -250,6 +260,7 @@ class FileService {
           path: filePath,
           title,
           storyId,
+          owners,
           createdAt: stats.birthtime.toISOString(),
           modifiedAt: stats.mtime.toISOString(),
           size: stats.size,

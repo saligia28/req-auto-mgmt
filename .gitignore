@@ -59,7 +59,10 @@ coverage/
 .cache/
 .turbo/
 
-# Claude Code
+# AI
+CLAUDE.md
+AGENTS.md
+.codex/
 .claude/
 
 # Debug

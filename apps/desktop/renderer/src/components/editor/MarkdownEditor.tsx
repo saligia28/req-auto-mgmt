@@ -9,6 +9,9 @@ interface MarkdownEditorProps {
   initialContent: string;
   onClose: () => void;
   onSave: (content: string) => Promise<boolean>;
+  storyId?: string;
+  storyTitle?: string;
+  onAIImplement?: () => void;
 }
 
 // 从 Markdown 中提取需求描述内容（去除 AI 分析部分）
@@ -68,6 +71,9 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
   initialContent,
   onClose,
   onSave,
+  storyId: _storyId,
+  storyTitle: _storyTitle,
+  onAIImplement,
 }) => {
   const [content, setContent] = useState(initialContent);
   const [originalContent, setOriginalContent] = useState(initialContent);
@@ -330,6 +336,30 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
               : (theme === 'hacker' ? '[AI 分析]' : 'AI 分析')
             }
           </button>
+          {/* AI Implement button */}
+          {onAIImplement && (
+            <button
+              onClick={onAIImplement}
+              className={`
+                px-3 py-1.5 rounded-md text-xs transition-colors
+                ${theme === 'hacker'
+                  ? 'border border-hacker-primary text-hacker-primary hover:bg-hacker-primary hover:text-black font-mono'
+                  : ''
+                }
+                ${theme === 'claude'
+                  ? 'border border-claude-primary text-claude-primary hover:bg-claude-primary hover:text-white'
+                  : ''
+                }
+                ${theme === 'notion'
+                  ? 'border border-notion-primary text-notion-primary hover:bg-notion-primary hover:text-white'
+                  : ''
+                }
+              `}
+              title="AI 实现需求"
+            >
+              {theme === 'hacker' ? '> AI 实现' : 'AI 实现'}
+            </button>
+          )}
           {/* Save button */}
           <button
             onClick={handleSave}
