@@ -50,8 +50,50 @@ type TabType = 'tapd' | 'local';
 // 迭代选择缓存key
 const ITERATION_CACHE_KEY = 'req-mgmt:selected-iteration-id';
 
-// 前端负责人快捷筛选 (固定配置)
-const FRONTEND_OWNER_TOKENS = ['江林', '喻童', '王荣祥'];
+// 需求相关人员快捷筛选 (固定配置)
+const RELATED_PERSON_TOKENS = ['江林', '喻童', '王荣祥'];
+
+// 从 Markdown 中分离内容：AI 分析之前、AI 分析部分、AI 分析之后
+function separateContent(markdown: string): {
+  beforeAI: string;
+  afterAI: string;
+  hasAISection: boolean;
+} {
+  // 找到 AI 分析部分的开始位置
+  const aiSectionStartRegex = /^---\s*\n+##\s*AI\s*分析/m;
+  const startMatch = markdown.match(aiSectionStartRegex);
+
+  if (!startMatch || startMatch.index === undefined) {
+    return {
+      beforeAI: markdown.trim(),
+      afterAI: '',
+      hasAISection: false,
+    };
+  }
+
+  const beforeAI = markdown.substring(0, startMatch.index).trim();
+  const afterStart = markdown.substring(startMatch.index);
+
+  // 找到 AI 分析部分的结束位置
+  // AI 分析部分结束于：下一个 "---" 分隔线开头的新部分，或者下一个非 AI 分析的二级标题
+  const aiSectionEndRegex = /\n(?=---\s*\n(?!##\s*AI\s*分析)|\n##\s+(?!#)(?!AI\s*分析))/;
+  const endMatch = afterStart.match(aiSectionEndRegex);
+
+  if (endMatch && endMatch.index !== undefined) {
+    const afterAI = afterStart.substring(endMatch.index).trim();
+    return {
+      beforeAI,
+      afterAI,
+      hasAISection: true,
+    };
+  }
+
+  return {
+    beforeAI,
+    afterAI: '',
+    hasAISection: true,
+  };
+}
 
 export const RequirementsPage: FC = () => {
   const { settings } = useAppStore();
@@ -116,28 +158,61 @@ export const RequirementsPage: FC = () => {
     failed: number;
   } | null>(null);
 
+  // 每个文件的独立 AI 分析状态
+  const [analyzingFiles, setAnalyzingFiles] = useState<Map<string, boolean>>(new Map());
+
+  // 更新单个文件的分析状态
+  const setFileAnalyzing = useCallback((fileId: string, analyzing: boolean) => {
+    setAnalyzingFiles((prev) => {
+      const next = new Map(prev);
+      if (analyzing) {
+        next.set(fileId, true);
+      } else {
+        next.delete(fileId);
+      }
+      return next;
+    });
+  }, []);
+
   // 批量删除状态
   const [batchDeleting, setBatchDeleting] = useState(false);
 
   // 获取需求目录
   const requirementsDir = settings.paths.requirementsDir;
 
-  // 筛选后的需求列表
+  // 检查需求是否与筛选条件相关（负责人、前端字段）
+  const isStoryRelated = (story: StorySummary, filters: Set<string>): boolean => {
+    const filterTokens = Array.from(filters);
+    // 检查负责人
+    const ownerMatch = story.owners.some((owner) =>
+      filterTokens.some((token) => owner.includes(token))
+    );
+    if (ownerMatch) return true;
+    // 检查前端字段
+    if (story.frontend) {
+      const frontendMatch = filterTokens.some((token) => story.frontend!.includes(token));
+      if (frontendMatch) return true;
+    }
+    return false;
+  };
+
+  // 筛选后的需求列表（匹配负责人或前端字段）
   const filteredStories = tapdOwnerFilters.size > 0
-    ? stories.filter((story) =>
-        story.owners.some((owner) =>
-          Array.from(tapdOwnerFilters).some((token) => owner.includes(token))
-        )
-      )
+    ? stories.filter((story) => isStoryRelated(story, tapdOwnerFilters))
     : stories;
 
-  // 筛选后的本地文件列表（根据文件负责人匹配）
+  // 检查本地文件是否与筛选条件相关
+  const isFileRelated = (file: LocalFile, filters: Set<string>): boolean => {
+    const filterTokens = Array.from(filters);
+    // 检查负责人
+    return (file.owners || []).some((owner) =>
+      filterTokens.some((token) => owner.includes(token))
+    );
+  };
+
+  // 筛选后的本地文件列表
   const filteredLocalFiles = localOwnerFilters.size > 0
-    ? localFiles.filter((file) =>
-        (file.owners || []).some((owner) =>
-          Array.from(localOwnerFilters).some((token) => owner.includes(token))
-        )
-      )
+    ? localFiles.filter((file) => isFileRelated(file, localOwnerFilters))
     : localFiles;
 
   // 当筛选条件变化时清空选择
@@ -484,13 +559,10 @@ export const RequirementsPage: FC = () => {
             continue;
           }
 
-          // 提取需求内容（去除已有的 AI 分析部分）
+          // 分离内容：AI 分析之前、AI 分析之后
           const content = readResult.content;
-          const aiSectionRegex = /^---\s*\n+##\s*AI\s*分析/m;
-          const match = content.match(aiSectionRegex);
-          const requirementContent = match?.index !== undefined
-            ? content.substring(0, match.index).trim()
-            : content.trim();
+          const { beforeAI, afterAI } = separateContent(content);
+          const requirementContent = beforeAI;
 
           if (!requirementContent) {
             failedCount++;
@@ -528,8 +600,11 @@ export const RequirementsPage: FC = () => {
             lines.push('');
           }
 
-          // 保存文件
-          const newContent = requirementContent + '\n\n' + lines.join('\n');
+          // 保存文件：需求内容 + AI 分析 + 原有的后续内容
+          let newContent = requirementContent + '\n\n' + lines.join('\n');
+          if (afterAI) {
+            newContent += '\n\n' + afterAI;
+          }
           const saveResult = await window.electronAPI.file.save(file.path, newContent);
           if (saveResult.success) {
             successCount++;
@@ -698,7 +773,7 @@ export const RequirementsPage: FC = () => {
           </div>
         )}
 
-        {/* 负责人筛选下拉框（两个 tab 独立） */}
+        {/* 需求相关筛选下拉框（两个 tab 独立） */}
         <div className="relative owner-filter-dropdown">
           <button
             onClick={() => setShowOwnerDropdown(!showOwnerDropdown)}
@@ -720,8 +795,8 @@ export const RequirementsPage: FC = () => {
           >
             <span>
               {(activeTab === 'tapd' ? tapdOwnerFilters : localOwnerFilters).size > 0
-                ? `负责人(${(activeTab === 'tapd' ? tapdOwnerFilters : localOwnerFilters).size})`
-                : '负责人'
+                ? `需求相关(${(activeTab === 'tapd' ? tapdOwnerFilters : localOwnerFilters).size})`
+                : '需求相关'
               }
             </span>
             <span className="text-xs">{showOwnerDropdown ? '▲' : '▼'}</span>
@@ -737,9 +812,9 @@ export const RequirementsPage: FC = () => {
                 ${theme === 'notion' ? 'bg-notion-panel border border-notion-border' : ''}
               `}
             >
-              {FRONTEND_OWNER_TOKENS.map((owner) => (
+              {RELATED_PERSON_TOKENS.map((person) => (
                 <label
-                  key={owner}
+                  key={person}
                   className={`
                     flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors
                     ${theme === 'hacker' ? 'hover:bg-hacker-primary/20 text-hacker-text-main font-mono' : ''}
@@ -749,15 +824,15 @@ export const RequirementsPage: FC = () => {
                 >
                   <input
                     type="checkbox"
-                    checked={(activeTab === 'tapd' ? tapdOwnerFilters : localOwnerFilters).has(owner)}
+                    checked={(activeTab === 'tapd' ? tapdOwnerFilters : localOwnerFilters).has(person)}
                     onChange={() => {
                       const currentFilters = activeTab === 'tapd' ? tapdOwnerFilters : localOwnerFilters;
                       const setFilters = activeTab === 'tapd' ? setTapdOwnerFilters : setLocalOwnerFilters;
                       const newSet = new Set(currentFilters);
-                      if (newSet.has(owner)) {
-                        newSet.delete(owner);
+                      if (newSet.has(person)) {
+                        newSet.delete(person);
                       } else {
-                        newSet.add(owner);
+                        newSet.add(person);
                       }
                       setFilters(newSet);
                     }}
@@ -768,7 +843,7 @@ export const RequirementsPage: FC = () => {
                       ${theme === 'notion' ? 'accent-notion-primary' : ''}
                     `}
                   />
-                  <span className="text-sm">{owner}</span>
+                  <span className="text-sm">{person}</span>
                 </label>
               ))}
               {(activeTab === 'tapd' ? tapdOwnerFilters : localOwnerFilters).size > 0 && (
@@ -1064,6 +1139,9 @@ export const RequirementsPage: FC = () => {
                 initialContent={fileContent}
                 storyId={selectedFile.storyId}
                 storyTitle={selectedFile.title}
+                batchAnalyzing={batchAnalyzing}
+                isAnalyzing={analyzingFiles.get(selectedFile.id) || false}
+                onAnalyzingChange={(analyzing) => setFileAnalyzing(selectedFile.id, analyzing)}
                 onAIImplement={() => handleLocalFileAIImplement(selectedFile)}
                 onClose={() => {
                   setSelectedFile(null);

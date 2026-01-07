@@ -33,6 +33,12 @@ const services: ServiceConfig[] = [
     servicePath: 'services/ai-service',
     entryFile: 'index.js',
   },
+  {
+    name: 'metersphere-service',
+    port: 3404,
+    servicePath: 'services/metersphere-service',
+    entryFile: 'index.js',
+  },
 ];
 
 // 运行中的服务进程

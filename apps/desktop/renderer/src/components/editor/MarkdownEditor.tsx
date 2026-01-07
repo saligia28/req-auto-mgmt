@@ -12,19 +12,61 @@ interface MarkdownEditorProps {
   storyId?: string;
   storyTitle?: string;
   onAIImplement?: () => void;
+  // 外部分析状态管理
+  isAnalyzing?: boolean;
+  onAnalyzingChange?: (analyzing: boolean) => void;
+  // 批量分析状态（批量分析时禁用单个文件操作）
+  batchAnalyzing?: boolean;
+}
+
+// 从 Markdown 中分离内容：AI 分析之前、AI 分析部分、AI 分析之后
+function separateContent(markdown: string): {
+  beforeAI: string;
+  afterAI: string;
+  hasAISection: boolean;
+} {
+  // 找到 AI 分析部分的开始位置
+  const aiSectionStartRegex = /^---\s*\n+##\s*AI\s*分析/m;
+  const startMatch = markdown.match(aiSectionStartRegex);
+
+  if (!startMatch || startMatch.index === undefined) {
+    return {
+      beforeAI: markdown.trim(),
+      afterAI: '',
+      hasAISection: false,
+    };
+  }
+
+  const beforeAI = markdown.substring(0, startMatch.index).trim();
+  const afterStart = markdown.substring(startMatch.index);
+
+  // 找到 AI 分析部分的结束位置
+  // AI 分析部分结束于：下一个 "---" 分隔线开头的新部分，或者下一个非 AI 分析的二级标题
+  // 排除 AI 分析内部的三级标题（### 需求要点、### 测试用例建议）
+  const aiSectionEndRegex = /\n(?=---\s*\n(?!##\s*AI\s*分析)|\n##\s+(?!#)(?!AI\s*分析))/;
+  const endMatch = afterStart.match(aiSectionEndRegex);
+
+  if (endMatch && endMatch.index !== undefined) {
+    const afterAI = afterStart.substring(endMatch.index).trim();
+    return {
+      beforeAI,
+      afterAI,
+      hasAISection: true,
+    };
+  }
+
+  // 没有找到结束位置，说明 AI 分析后面没有其他内容
+  return {
+    beforeAI,
+    afterAI: '',
+    hasAISection: true,
+  };
 }
 
 // 从 Markdown 中提取需求描述内容（去除 AI 分析部分）
 function extractRequirementContent(markdown: string): string {
-  // 找到 AI 分析部分的开始位置
-  const aiSectionRegex = /^---\s*\n+##\s*AI\s*分析/m;
-  const match = markdown.match(aiSectionRegex);
-
-  if (match && match.index !== undefined) {
-    return markdown.substring(0, match.index).trim();
-  }
-
-  return markdown.trim();
+  const { beforeAI } = separateContent(markdown);
+  return beforeAI;
 }
 
 // 格式化 AI 分析结果为 Markdown
@@ -74,14 +116,30 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
   storyId: _storyId,
   storyTitle: _storyTitle,
   onAIImplement,
+  isAnalyzing: externalAnalyzing,
+  onAnalyzingChange,
+  batchAnalyzing = false,
 }) => {
   const [content, setContent] = useState(initialContent);
   const [originalContent, setOriginalContent] = useState(initialContent);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
+  // 内部分析状态（当没有外部状态管理时使用）
+  const [internalAnalyzing, setInternalAnalyzing] = useState(false);
   const [analyzeMessage, setAnalyzeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+
+  // 使用外部状态或内部状态
+  const analyzing = externalAnalyzing !== undefined ? externalAnalyzing : internalAnalyzing;
+  const setAnalyzing = (value: boolean) => {
+    if (onAnalyzingChange) {
+      onAnalyzingChange(value);
+    }
+    setInternalAnalyzing(value);
+  };
+
+  // 判断 AI 相关按钮是否应该被禁用
+  const isAIButtonsDisabled = batchAnalyzing || analyzing;
 
   const hasChanges = content !== originalContent;
 
@@ -160,7 +218,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
 
   // AI 分析功能
   const handleAIAnalyze = async () => {
-    if (analyzing) return;
+    if (analyzing || batchAnalyzing) return;
 
     try {
       setAnalyzing(true);
@@ -204,8 +262,14 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
       // 格式化分析结果
       const analysisMarkdown = formatAnalysisResult(result.result);
 
-      // 合并内容
-      const newContent = requirementContent + '\n\n' + analysisMarkdown;
+      // 分离内容，保留 AI 分析之后的其他内容
+      const { beforeAI, afterAI } = separateContent(content);
+
+      // 合并内容：需求内容 + AI 分析 + 原有的后续内容
+      let newContent = beforeAI + '\n\n' + analysisMarkdown;
+      if (afterAI) {
+        newContent += '\n\n' + afterAI;
+      }
       setContent(newContent);
 
       // 更新编辑器内容
@@ -312,7 +376,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
           {/* AI Analyze button */}
           <button
             onClick={handleAIAnalyze}
-            disabled={analyzing}
+            disabled={isAIButtonsDisabled}
             className={`
               px-3 py-1.5 rounded-md text-xs transition-colors
               ${theme === 'hacker'
@@ -329,17 +393,20 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
-            title="AI 分析需求"
+            title={batchAnalyzing ? '批量分析进行中' : 'AI 分析需求'}
           >
             {analyzing
               ? (theme === 'hacker' ? '分析中...' : '分析中...')
-              : (theme === 'hacker' ? '[AI 分析]' : 'AI 分析')
+              : batchAnalyzing
+                ? (theme === 'hacker' ? '[批量分析中]' : '批量分析中')
+                : (theme === 'hacker' ? '[AI 分析]' : 'AI 分析')
             }
           </button>
           {/* AI Implement button */}
           {onAIImplement && (
             <button
               onClick={onAIImplement}
+              disabled={isAIButtonsDisabled}
               className={`
                 px-3 py-1.5 rounded-md text-xs transition-colors
                 ${theme === 'hacker'
@@ -354,8 +421,9 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
                   ? 'border border-notion-primary text-notion-primary hover:bg-notion-primary hover:text-white'
                   : ''
                 }
+                disabled:opacity-50 disabled:cursor-not-allowed
               `}
-              title="AI 实现需求"
+              title={isAIButtonsDisabled ? '分析进行中，请稍候' : 'AI 实现需求'}
             >
               {theme === 'hacker' ? '> AI 实现' : 'AI 实现'}
             </button>
